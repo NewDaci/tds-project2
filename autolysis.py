@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 import requests
 import chardet
 import warnings
+import urllib.parse
 
 # Suppress specific UserWarnings
 warnings.filterwarnings("ignore", category=UserWarning, message=".*missing from font.*")
@@ -165,7 +166,10 @@ def generate_readme(df, summary, missing_values, charts, output_file):
         f.write(f"### Summary\n\n{narrative}\n\n")
         for chart in charts:
             name = chart.split("/")
-            f.write(f"![Chart]({name[-1]})\n\n")
+            chart_name = name[-1]
+            # URL-encode the chart name to handle spaces
+            encoded_chart_name = urllib.parse.quote(chart_name)
+            f.write(f"![Chart]({encoded_chart_name})\n\n")
 
 def main():
     if len(sys.argv) != 2:
