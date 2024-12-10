@@ -154,13 +154,19 @@ def generate_readme(df, summary, missing_values, charts, output_file):
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python autolysis.py <dataset.csv>")
+        print("Usage: uv run autolysis.py <dataset.csv>")
         sys.exit(1)
 
     file_path = sys.argv[1]
     if not os.path.exists(file_path):
         print(f"Error: File {file_path} not found.")
         sys.exit(1)
+    
+    # Create a directory named after the file (without extension)
+    output_dir = os.path.splitext(file_path)[0]
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        print(f"Created directory: {output_dir}")
 
     print("Starting analysis...")
     df = load_data(file_path)
@@ -169,11 +175,10 @@ def main():
     summary, missing_values = generate_summary_statistics(df)
 
     print("Creating visualizations...")
-    output_prefix = os.path.splitext(file_path)[0]
-    charts = visualize_data(df, output_prefix)
+    charts = visualize_data(df, os.path.join(output_dir, os.path.basename(output_dir)))
 
     print("Generating README.md...")
-    output_file = "README.md"
+    output_file = os.path.join(output_dir, "README.md")
     generate_readme(df, summary, missing_values, charts, output_file)
 
     print("Analysis complete. Results saved to README.md and chart files.")
