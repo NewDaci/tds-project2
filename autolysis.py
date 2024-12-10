@@ -164,7 +164,8 @@ def generate_readme(df, summary, missing_values, charts, output_file):
         f.write("# Automated Analysis\n\n")
         f.write(f"### Summary\n\n{narrative}\n\n")
         for chart in charts:
-            f.write(f"![Chart]({chart})\n\n")
+            name = chart.split("/")
+            f.write(f"![Chart]({name[-1]})\n\n")
 
 def main():
     if len(sys.argv) != 2:
