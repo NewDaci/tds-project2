@@ -2,32 +2,51 @@
 
 ### Summary
 
-Based on the dataset described, it consists of 2652 rows and 8 columns, which likely contain information related to various assessments or evaluations, with a specific focus on aspects such as language, title, and overall feedback. Here's a narrative summary highlighting the status of the data and some key insights:
+Based on the dataset you provided, which consists of 2652 rows and 8 columns, we can draw various insights regarding the information it holds, particularly in relation to user submissions or reviews over time.
 
 ### Narrative Summary
 
-The dataset presents a structured collection of assessments characterized by several dimensions, including the date of the assessment, the language in which it was conducted, the type of assessment, the title, the author or evaluator (denoted by 'by'), and three critical evaluation metrics: overall satisfaction, quality, and repeatability. 
+1. **Data Structure**:
+   - The dataset includes eight columns: 
+     - **date**: Likely representing when the data entries were recorded or submitted.
+     - **language**: Denoting the language used in the submission.
+     - **type**: Suggesting the category or nature of the submissions.
+     - **title**: The title of the submission or review.
+     - **by**: The identifier or name of the author/poster of the review.
+     - **overall**: A numerical rating or overall score given by the user.
+     - **quality**: Possibly indicating the quality rating of the submission.
+     - **repeatability**: A measure that may indicate if the submission/review can be replicated.
 
-Upon examination, the dataset reveals significant missing values which are noteworthy:
-
-- **Date**: There are 99 missing entries, which could affect time-based analyses, particularly if trends over time are sought.
-- **Language**: All 2652 entries are missing language data, rendering any language-based analysis or demographic segmentation impossible.
-- **Type**: Similarly, the type is completely absent for all entries, which limits the ability to categorize the assessments based on their nature.
-- **Title and By**: Both title and evaluator data are also absent, meaning the dataset lacks contextual information about what each assessment pertains to or who conducted it.
-
-In contrast, the metrics related to overall, quality, and repeatability are fully populated, with no missing values. This suggests that while there may be a lack of contextual data, the qualitative assessments themselves are complete and ready for analysis.
+2. **Missing Values**: 
+   - The dataset has some missing values, most notably:
+     - **date** has 99 missing entries, which is significant as it might affect temporal analysis or trends over time.
+     - **by** has 262 missing entries, indicating a considerable portion of submissions lack author identification, which could hinder individual-level analysis or user engagement insights.
+   - All other columns do not have missing values, which ensures the completeness of critical attributes like language, type, title, overall ratings, quality, and repeatability.
 
 ### Key Insights
 
-1. **Lack of Contextual Information**: With the absence of language, type, title, and author information, it is difficult to derive meaningful insights or trends regarding the assessments. Future data collection efforts should focus on ensuring the completeness of these critical columns.
+1. **Temporal Analysis**:
+   - The presence of missing dates suggests that seasonal trends or variations over time may not be fully analyzeable; however, visualizations can still be created with the available data. Identifying patterns in how reviews or submissions increase or decrease over certain periods could yield useful insights.
 
-2. **Full Qualitative Ratings**: The presence of complete ratings for overall, quality, and repeatability suggests that qualitative analysis can be performed. This allows for assessment of user satisfaction and evaluation effectiveness, even in the absence of contextual metadata.
+2. **Language Diversity**:
+   - The fact that there are zero missing entries for the language column points to a diverse range of languages used in submissions, which is valuable for understanding audience demographics and tailoring content or services to specific language groups.
 
-3. **Potential for Analysis**: Despite the absence of contextual fields, it may still be possible to calculate summary statistics (means, medians, etc.) for overall ratings, quality, and repeatability across the dataset, which can yield baseline insights into the evaluation process.
+3. **Author Engagement**:
+   - With 262 missing entries in the 'by' column, there is a considerable amount of data without author attribution. This could be indicative of anonymous or unrecognized contributors, and understanding the ratio of anonymous to identified users could be beneficial for assessing user engagement and contributions.
 
-4. **Future Data Enhancements**: Moving forward, improving data capture mechanisms to avoid such significant missing values will be critical. Implementing mandatory fields, especially for key identifiers like language and type, would enhance the robustness of the dataset.
+4. **Rating Analysis**:
+   - The 'overall', 'quality', and 'repeatability' columns provide quantitative measures for analyzing user satisfaction. With no missing values, a comprehensive analysis could help identify correlations between these metrics. For example, understanding how overall satisfaction relates to perceived quality and repeatability could inform quality improvement initiatives.
 
-In conclusion, while the dataset provides a quantity of assessments complete with qualitative metrics, the lack of essential contextual information severely limits its analytical potential. Future work should prioritize filling in these gaps to facilitate a more nuanced understanding of the underlying data.
+5. **Type and Title Insights**:
+   - Analyzing the 'type' and 'title' fields can provide critical insights into the content focus of submissions. This can help to identify common topics or trends within specific user segments and guide content strategy.
+
+### Conclusion
+
+This dataset offers rich insights into user submissions and behaviors. However, attention must be given to the missing values, especially in the 'date' and 'by' columns, to ensure a comprehensive analysis. By exploring correlations between overall ratings and quality assessments and examining submission trends over time, stakeholders can gain a deeper understanding of user engagement and satisfaction. Further analysis and data cleaning may enhance the utility of this dataset for strategic decision-making.
 
 ![Chart](media/media_correlation_heatmap.png)
+
+![Chart](media/media_date_countplot.png)
+
+![Chart](media/media_language_countplot.png)
 

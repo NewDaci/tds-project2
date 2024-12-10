@@ -18,6 +18,10 @@ import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import requests
 import chardet
+import warnings
+
+# Suppress specific UserWarnings
+warnings.filterwarnings("ignore", category=UserWarning, message=".*missing from font.*")
 
 
 
@@ -34,44 +38,44 @@ AIPROXY_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 def detect_encoding(file_path):
     with open(file_path, 'rb') as file:
         result = chardet.detect(file.read(10000))  # Detect encoding from a sample
-        return result['encoding']
+        encoding = result.get('encoding')
+        if not encoding:
+            print("Could not detect encoding, defaulting to 'utf-8'.")
+            encoding = 'utf-8'  # Fallback to utf-8
+        return encoding
 
-# Function to safely read CSV with detected encoding and handle errors
 def read_csv_safe(file_path):
+    fallback_encodings = ['utf-8', 'ISO-8859-1', 'Windows-1252']
     try:
-        # Detect the file encoding first
-        encoding = detect_encoding(file_path)
-        print(f"Detected encoding: {encoding}")
+        # Detect encoding first
+        detected_encoding = detect_encoding(file_path)
+        print(f"Detected encoding: {detected_encoding}")
 
-        # Attempt to read the CSV with the detected encoding
-        df = pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
-        
-    except Exception as e:
-        # Handle general exceptions (including file read issues)
-        print(f"Error loading dataset: {e}")
-        return None
-    
-    # Clean column names (strip whitespaces, handle potential issues)
-    df.columns = df.columns.str.strip()
+        # Try to read with detected encoding
+        df = pd.read_csv(file_path, encoding=detected_encoding, on_bad_lines='skip')
+        print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns using detected encoding.")
+        return df
 
-    # Automatically detect and convert date columns (if any)
-    for col in df.columns:
-        if df[col].dtype == 'object':  # For string/object type columns
-            # Try to convert columns to datetime
+    except UnicodeDecodeError as e:
+        print(f"UnicodeDecodeError with detected encoding '{detected_encoding}': {e}")
+
+        # Try fallback encodings
+        for encoding in fallback_encodings:
             try:
-                df[col] = pd.to_datetime(df[col], errors='coerce')
-            except Exception:
-                pass  # Ignore any errors that occur during conversion
+                print(f"Retrying with encoding: {encoding}")
+                df = pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
+                print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns using '{encoding}' encoding.")
+                return df
+            except UnicodeDecodeError as inner_e:
+                print(f"Failed with encoding '{encoding}': {inner_e}")
 
-    # Handle any float or number columns that might have incorrect format (e.g., commas)
-    for col in df.columns:
-        if df[col].dtype == 'object':  # String columns
-            # Try to convert to numbers, replacing commas or other symbols if needed
-            df[col] = df[col].replace({',': '', '$': '', '€': '', '£': ''}, regex=True)  # Remove common currency symbols
-            df[col] = pd.to_numeric(df[col], errors='ignore')  # Convert to numeric, leaving errors unchanged
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        sys.exit(1)
 
-    # Return the cleaned dataframe
-    return df
+    print("All attempts to decode the file have failed. Please check the file's encoding.")
+    sys.exit(1)
+
 
 
 
@@ -96,11 +100,19 @@ def generate_summary_statistics(df):
 
 def visualize_data(df, output_prefix):
     """Create and save visualizations."""
+    from matplotlib import rcParams
+    
+    # Set font to handle Unicode
+    rcParams["font.family"] = "Noto Sans CJK JP"
+    rcParams["axes.unicode_minus"] = False
+
     charts = []
+    
     # Correlation heatmap
-    if df.select_dtypes(include="number").shape[1] > 1:
+    numeric_df = df.select_dtypes(include="number")  # Select only numeric columns
+    if numeric_df.shape[1] > 1:
         plt.figure(figsize=(10, 8))
-        corr_matrix = df.corr()
+        corr_matrix = numeric_df.corr()  # Calculate correlation matrix for numeric data
         sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f")
         heatmap_path = f"{output_prefix}_correlation_heatmap.png"
         plt.title("Correlation Heatmap")
@@ -119,6 +131,8 @@ def visualize_data(df, output_prefix):
         plt.close()
 
     return charts
+
+
 
 def generate_readme(df, summary, missing_values, charts, output_file):
     """Generate README.md based on the analysis and visualizations."""
