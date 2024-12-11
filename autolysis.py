@@ -6,13 +6,16 @@
 #   "seaborn",
 #   "requests",
 #   "chardet",
+#   "scipy",
 #   "python-dotenv",
 # ]
 # ///
 
 import os
 import sys
+import json
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
@@ -20,11 +23,10 @@ import requests
 import chardet
 import warnings
 import urllib.parse
+import scipy.stats as stats
 
 # Suppress specific UserWarnings
-warnings.filterwarnings("ignore", category=UserWarning, message=".*missing from font.*")
-
-
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Load environment variables
 load_dotenv()
@@ -37,170 +39,232 @@ if not AIPROXY_TOKEN:
 AIPROXY_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
 def detect_encoding(file_path):
+    """Detect file encoding using chardet."""
     with open(file_path, 'rb') as file:
-        result = chardet.detect(file.read(10000))  # Detect encoding from a sample
-        encoding = result.get('encoding')
-        if not encoding:
-            print("Could not detect encoding, defaulting to 'utf-8'.")
-            encoding = 'utf-8'  # Fallback to utf-8
-        return encoding
+        result = chardet.detect(file.read(10000))
+        return result.get('encoding', 'utf-8')
 
 def read_csv_safe(file_path):
-    fallback_encodings = ['utf-8', 'ISO-8859-1', 'Windows-1252']
+    """Safely read CSV file with encoding detection."""
     try:
-        # Detect encoding first
         detected_encoding = detect_encoding(file_path)
         print(f"Detected encoding: {detected_encoding}")
-
-        # Try to read with detected encoding
+        
         df = pd.read_csv(file_path, encoding=detected_encoding, on_bad_lines='skip')
-        print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns using detected encoding.")
+        print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns")
         return df
-
-    except UnicodeDecodeError as e:
-        print(f"UnicodeDecodeError with detected encoding '{detected_encoding}': {e}")
-
-        # Try fallback encodings
-        for encoding in fallback_encodings:
-            try:
-                print(f"Retrying with encoding: {encoding}")
-                df = pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
-                print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns using '{encoding}' encoding.")
-                return df
-            except UnicodeDecodeError as inner_e:
-                print(f"Failed with encoding '{encoding}': {inner_e}")
-
     except Exception as e:
         print(f"Error loading dataset: {e}")
         sys.exit(1)
 
-    print("All attempts to decode the file have failed. Please check the file's encoding.")
-    sys.exit(1)
+def convert_to_serializable(obj):
+    """Convert non-serializable objects to serializable formats."""
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_serializable(item) for item in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.int64, np.float64, np.bool_)):
+        return obj.item()
+    elif pd.isna(obj):
+        return None
+    return obj
 
+def analyze_data_structure(df):
+    """Perform comprehensive data structure analysis."""
+    analysis = {
+        "total_rows": int(df.shape[0]),
+        "total_columns": int(df.shape[1]),
+        "column_types": {col: str(dtype) for col, dtype in df.dtypes.items()},
+        "missing_values": df.isnull().sum().to_dict(),
+        "missing_percentage": (df.isnull().sum() / len(df) * 100).to_dict(),
+        "unique_values": {col: int(df[col].nunique()) for col in df.columns}
+    }
+    return analysis
 
-
-
-def load_data(file_path):
-    """Load the CSV dataset into a Pandas DataFrame."""
-    try:
-
-        data = read_csv_safe(file_path)
-        # data = pd.read_csv(file_path, encoding=encoding)
-        print(f"Dataset loaded with {data.shape[0]} rows and {data.shape[1]} columns.")
-        return data
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        sys.exit(1)
-
-
-def generate_summary_statistics(df):
-    """Generate summary statistics of the dataset."""
-    summary = df.describe(include="all").to_dict()
-    missing_values = df.isnull().sum().to_dict()
-    return summary, missing_values
-
-def visualize_data(df, output_prefix):
-    """Create and save visualizations."""
-    from matplotlib import rcParams
+def detect_outliers(df):
+    """Detect outliers using IQR method for numeric columns."""
+    outliers = {}
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
     
-    # Set font to handle Unicode
-    rcParams["font.family"] = "Noto Sans CJK JP"
-    rcParams["axes.unicode_minus"] = False
+    for col in numeric_cols:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outliers[col] = {
+            "lower_bound": float(lower_bound),
+            "upper_bound": float(upper_bound),
+            "outliers_count": int(((df[col] < lower_bound) | (df[col] > upper_bound)).sum())
+        }
+    
+    return outliers
 
+def perform_statistical_tests(df):
+    """Perform basic statistical tests."""
+    statistical_tests = {}
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    
+    for col in numeric_cols:
+        # Shapiro-Wilk test for normality
+        if len(df[col]) > 3:  # Minimum requirement for the test
+            _, p_value = stats.shapiro(df[col].dropna())
+            statistical_tests[col] = {
+                "normality_test": {
+                    "p_value": float(p_value),
+                    "is_normal": bool(p_value > 0.05)
+                }
+            }
+    
+    return statistical_tests
+
+def generate_visualizations(df, output_dir):
+    """Generate comprehensive visualizations, limited to 3 PNG files."""
+    plt.close('all')
     charts = []
     
-    # Correlation heatmap
-    numeric_df = df.select_dtypes(include="number")  # Select only numeric columns
-    if numeric_df.shape[1] > 1:
-        plt.figure(figsize=(10, 8))
-        corr_matrix = numeric_df.corr()  # Calculate correlation matrix for numeric data
-        sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", fmt=".2f")
-        heatmap_path = f"{output_prefix}_correlation_heatmap.png"
-        plt.title("Correlation Heatmap")
-        plt.savefig(heatmap_path)
-        charts.append(heatmap_path)
+    # Set up matplotlib parameters for better aesthetics
+    plt.rcParams.update({
+        'font.size': 10,
+        'axes.titlesize': 12,
+        'axes.labelsize': 10
+    })
+    
+    # Correlation Heatmap
+    numeric_df = df.select_dtypes(include=[np.number])
+    if len(numeric_df.columns) > 1 and len(charts) < 3:
+        plt.figure(figsize=(12, 10))
+        corr_matrix = numeric_df.corr()
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5, fmt=".2f", square=True)
+        plt.title("Correlation Heatmap of Numeric Features", fontsize=14)
+        corr_path = os.path.join(output_dir, "correlation_heatmap.png")
+        plt.tight_layout()
+        plt.savefig(corr_path, dpi=300)
+        charts.append(corr_path)
         plt.close()
     
-    # Countplot for categorical variables
-    for col in df.select_dtypes(include="object").columns[:2]:  # Limit to 2 columns for simplicity
-        plt.figure(figsize=(10, 6))
-        sns.countplot(y=col, data=df, order=df[col].value_counts().index)
-        countplot_path = f"{output_prefix}_{col}_countplot.png"
-        plt.title(f"Count Plot for {col}")
-        plt.savefig(countplot_path)
-        charts.append(countplot_path)
+    # Box plots for numeric columns
+    numeric_cols = numeric_df.columns
+    if len(numeric_cols) > 0 and len(charts) < 3:
+        plt.figure(figsize=(15, 6))
+        df[numeric_cols].boxplot()
+        plt.title("Box Plot of Numeric Features", fontsize=14)
+        plt.xticks(rotation=45)
+        box_path = os.path.join(output_dir, "numeric_boxplot.png")
+        plt.tight_layout()
+        plt.savefig(box_path, dpi=300)
+        charts.append(box_path)
         plt.close()
-
+    
+    # Categorical feature distribution
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+    for col in categorical_cols:
+        if len(charts) < 3:
+            plt.figure(figsize=(10, 6))
+            value_counts = df[col].value_counts()
+            sns.barplot(x=value_counts.index, y=value_counts.values)
+            plt.title(f"Distribution of {col}", fontsize=14)
+            plt.xlabel(col, fontsize=12)
+            plt.ylabel("Count", fontsize=12)
+            plt.xticks(rotation=45, ha='right')
+            cat_path = os.path.join(output_dir, f"{col}_distribution.png")
+            plt.tight_layout()
+            plt.savefig(cat_path, dpi=300)
+            charts.append(cat_path)
+            plt.close()
+        
+        # Break if we've reached 3 charts
+        if len(charts) >= 3:
+            break
+    
     return charts
 
-
-
-def generate_readme(df, summary, missing_values, charts, output_file):
-    """Generate README.md based on the analysis and visualizations."""
-    description_prompt = (
-        f"The dataset has {df.shape[0]} rows and {df.shape[1]} columns. "
-        f"The columns are: {', '.join(df.columns)}.\n"
-        f"Missing values: {missing_values}\n"
-        "Provide a narrative summary and key insights based on this data."
-    )
-
+def call_llm_with_analysis(data_analysis, charts):
+    """Call LLM to generate narrative based on data analysis."""
     try:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {AIPROXY_TOKEN}"
         }
+        
+        # Convert data_analysis to JSON-serializable format
+        serializable_analysis = convert_to_serializable(data_analysis)
+        
+        # Prepare a comprehensive prompt
+        prompt = (
+            "Analyze the following dataset and provide a comprehensive narrative:\n\n"
+            f"Dataset Structure:\n{json.dumps(serializable_analysis, indent=2)}\n\n"
+            "Key Points to Cover:\n"
+            "1. Brief overview of the dataset\n"
+            "2. Key characteristics and interesting patterns\n"
+            "3. Potential insights and recommendations\n"
+            "4. Limitations or areas requiring further investigation\n"
+        )
+        
         data = {
             "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": description_prompt}]
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1000
         }
+        
         response = requests.post(AIPROXY_URL, headers=headers, json=data)
-        response.raise_for_status()  # Raise an error if the request fails
+        response.raise_for_status()
         narrative = response.json()["choices"][0]["message"]["content"]
+        
+        return narrative
     except Exception as e:
         print(f"Error generating narrative: {e}")
-        narrative = "Could not generate narrative."
+        return "Unable to generate narrative due to an error."
 
-    # Create README
-    with open(output_file, "w") as f:
-        f.write("# Automated Analysis\n\n")
-        f.write(f"### Summary\n\n{narrative}\n\n")
+def write_readme(output_dir, narrative, charts):
+    """Write comprehensive README.md with narrative and image references."""
+    readme_path = os.path.join(output_dir, "README.md")
+    
+    with open(readme_path, "w") as f:
+        f.write("# Automated Data Analysis Report\n\n")
+        f.write("## Analysis Narrative\n\n")
+        f.write(narrative + "\n\n")
+        
+        f.write("## Visualizations\n\n")
         for chart in charts:
-            name = chart.split("/")
-            chart_name = name[-1]
-            # URL-encode the chart name to handle spaces
-            encoded_chart_name = urllib.parse.quote(chart_name)
-            f.write(f"![Chart]({encoded_chart_name})\n\n")
+            chart_name = os.path.basename(chart)
+            f.write(f"### {chart_name}\n")
+            f.write(f"![{chart_name}]({chart_name})\n\n")
+    
+    print(f"README.md generated at {readme_path}")
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: uv run autolysis.py <dataset.csv>")
+        print("Usage: python autolysis.py <dataset.csv>")
         sys.exit(1)
 
     file_path = sys.argv[1]
-    if not os.path.exists(file_path):
-        print(f"Error: File {file_path} not found.")
-        sys.exit(1)
-    
-    # Create a directory named after the file (without extension)
     output_dir = os.path.splitext(file_path)[0]
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        print(f"Created directory: {output_dir}")
+    os.makedirs(output_dir, exist_ok=True)
 
-    print("Starting analysis...")
-    df = load_data(file_path)
+    # Load and analyze data
+    df = read_csv_safe(file_path)
+    
+    # Perform comprehensive analysis
+    data_analysis = {
+        "structure": analyze_data_structure(df),
+        "outliers": detect_outliers(df),
+        "statistical_tests": perform_statistical_tests(df)
+    }
+    
+    # Generate visualizations
+    charts = generate_visualizations(df, output_dir)
+    
+    # Generate narrative
+    narrative = call_llm_with_analysis(data_analysis, charts)
+    
+    # Write README
+    write_readme(output_dir, narrative, charts)
 
-    print("Generating summary statistics...")
-    summary, missing_values = generate_summary_statistics(df)
-
-    print("Creating visualizations...")
-    charts = visualize_data(df, os.path.join(output_dir, os.path.basename(output_dir)))
-
-    print("Generating README.md...")
-    output_file = os.path.join(output_dir, "README.md")
-    generate_readme(df, summary, missing_values, charts, output_file)
-
-    print("Analysis complete. Results saved to README.md and chart files.")
+    print("Analysis complete!")
 
 if __name__ == "__main__":
     main()
