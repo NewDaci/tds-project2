@@ -45,17 +45,31 @@ def detect_encoding(file_path):
         return result.get('encoding', 'utf-8')
 
 def read_csv_safe(file_path):
-    """Safely read CSV file with encoding detection."""
-    try:
-        detected_encoding = detect_encoding(file_path)
-        print(f"Detected encoding: {detected_encoding}")
-        
-        df = pd.read_csv(file_path, encoding=detected_encoding, on_bad_lines='skip')
-        print(f"Dataset loaded with {df.shape[0]} rows and {df.shape[1]} columns")
-        return df
-    except Exception as e:
-        print(f"Error loading dataset: {e}")
-        sys.exit(1)
+    """Safely read CSV file with robust encoding detection and handling."""
+    # List of encodings to try
+    encodings_to_try = [
+        'utf-8', 
+        'latin-1',  # Wide support for European languages
+        'windows-1252',  # Common for files from Windows
+        'iso-8859-1', 
+        'cp1252'
+    ]
+    
+    for encoding in encodings_to_try:
+        try:
+            print(f"Attempting to read file with {encoding} encoding...")
+            
+            df = pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
+            print(f"Dataset successfully loaded with {df.shape[0]} rows and {df.shape[1]} columns")
+            
+            return df
+        except Exception as e:
+            print(f"Failed to load with {encoding} encoding: {e}")
+    
+    # If all encodings fail
+    print("Could not read the file with any of the attempted encodings.")
+    sys.exit(1)
+
 
 def convert_to_serializable(obj):
     """Convert non-serializable objects to serializable formats."""
@@ -122,7 +136,7 @@ def perform_statistical_tests(df):
     return statistical_tests
 
 def generate_visualizations(df, output_dir):
-    """Generate comprehensive visualizations, limited to 3 PNG files."""
+    """Generate comprehensive visualizations."""
     plt.close('all')
     charts = []
     
@@ -135,7 +149,7 @@ def generate_visualizations(df, output_dir):
     
     # Correlation Heatmap
     numeric_df = df.select_dtypes(include=[np.number])
-    if len(numeric_df.columns) > 1 and len(charts) < 3:
+    if len(numeric_df.columns) > 1:
         plt.figure(figsize=(12, 10))
         corr_matrix = numeric_df.corr()
         sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5, fmt=".2f", square=True)
@@ -148,7 +162,7 @@ def generate_visualizations(df, output_dir):
     
     # Box plots for numeric columns
     numeric_cols = numeric_df.columns
-    if len(numeric_cols) > 0 and len(charts) < 3:
+    if len(numeric_cols) > 0:
         plt.figure(figsize=(15, 6))
         df[numeric_cols].boxplot()
         plt.title("Box Plot of Numeric Features", fontsize=14)
@@ -161,24 +175,19 @@ def generate_visualizations(df, output_dir):
     
     # Categorical feature distribution
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns
-    for col in categorical_cols:
-        if len(charts) < 3:
-            plt.figure(figsize=(10, 6))
-            value_counts = df[col].value_counts()
-            sns.barplot(x=value_counts.index, y=value_counts.values)
-            plt.title(f"Distribution of {col}", fontsize=14)
-            plt.xlabel(col, fontsize=12)
-            plt.ylabel("Count", fontsize=12)
-            plt.xticks(rotation=45, ha='right')
-            cat_path = os.path.join(output_dir, f"{col}_distribution.png")
-            plt.tight_layout()
-            plt.savefig(cat_path, dpi=300)
-            charts.append(cat_path)
-            plt.close()
-        
-        # Break if we've reached 3 charts
-        if len(charts) >= 3:
-            break
+    for col in categorical_cols[:3]:  # Limit to first 3 categorical columns
+        plt.figure(figsize=(10, 6))
+        value_counts = df[col].value_counts()
+        sns.barplot(x=value_counts.index, y=value_counts.values)
+        plt.title(f"Distribution of {col}", fontsize=14)
+        plt.xlabel(col, fontsize=12)
+        plt.ylabel("Count", fontsize=12)
+        plt.xticks(rotation=45, ha='right')
+        cat_path = os.path.join(output_dir, f"{col}_distribution.png")
+        plt.tight_layout()
+        plt.savefig(cat_path, dpi=300)
+        charts.append(cat_path)
+        plt.close()
     
     return charts
 
@@ -231,9 +240,11 @@ def write_readme(output_dir, narrative, charts):
         f.write("## Visualizations\n\n")
         for chart in charts:
             chart_name = os.path.basename(chart)
+            encoded_chart_name = urllib.parse.quote(chart_name)
             f.write(f"### {chart_name}\n")
-            f.write(f"![{chart_name}]({chart_name})\n\n")
-    
+            f.write(f"![{chart_name}]({encoded_chart_name})\n\n")
+
+                
     print(f"README.md generated at {readme_path}")
 
 def main():
