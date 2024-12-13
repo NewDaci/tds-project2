@@ -1,264 +1,281 @@
 # /// script
-# requires-python = ">=3.13"
+# requires-python = ">=3.11"
 # dependencies = [
-#   "chardet>=5.2.0",
-#   "matplotlib>=3.9.3",
-#   "numpy>=2.2.0",
-#   "openai>=1.57.2",
-#   "pandas>=2.2.3",
-#   "python-dotenv>=1.0.1",
-#   "requests>=2.32.3",
-#   "scikit-learn>=1.6.0",
-#   "seaborn>=0.13.2",
+#   "pandas",
+#   "matplotlib",
+#   "seaborn",
+#   "requests",
+#   "chardet",
+#   "scipy",
+#   "python-dotenv",
 # ]
 # ///
 
 import os
+import sys
+import json
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-import requests
-from sklearn.ensemble import IsolationForest
-from sklearn.impute import SimpleImputer
-from sklearn.cluster import KMeans
 from dotenv import load_dotenv
+import requests
 import chardet
+import warnings
+import urllib.parse
+import scipy.stats as stats
+
+# Suppress specific UserWarnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Load environment variables
 load_dotenv()
-AIPROXY_TOKEN = os.getenv("AIPROXY_TOKEN")
+AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN")
 
 if not AIPROXY_TOKEN:
-    raise ValueError("AIPROXY_TOKEN environment variable is not set.")
+    print("Error: AIPROXY_TOKEN environment variable not set.")
+    sys.exit(1)
 
-BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+AIPROXY_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
-def query_chat_completion(prompt, model="gpt-4o-mini"):
-    """Send a chat prompt to the LLM and return the response."""
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {AIPROXY_TOKEN}"
-    }
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    try:
-        response = requests.post(BASE_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json().get("choices", [{}])[0].get("message", {}).get("content", "No response content returned.")
-    except requests.RequestException as e:
-        raise Exception(f"Error during LLM query: {e}")
+def detect_encoding(file_path):
+    """Detect file encoding using chardet."""
+    with open(file_path, 'rb') as file:
+        result = chardet.detect(file.read(10000))
+        return result.get('encoding', 'utf-8')
 
+def read_csv_safe(file_path):
+    """Safely read CSV file with robust encoding detection and handling."""
+    # List of encodings to try
+    encodings_to_try = [
+        'utf-8', 
+        'latin-1',  # Wide support for European languages
+        'windows-1252',  # Common for files from Windows
+        'iso-8859-1', 
+        'cp1252'
+    ]
     
-def detect_file_encoding(filepath):
-    """Detect the encoding of a file."""
-    with open(filepath, "rb") as file:
-        result = chardet.detect(file.read(100000))  # Read the first 100,000 bytes
-        return result["encoding"]
+    for encoding in encodings_to_try:
+        try:
+            print(f"Attempting to read file with {encoding} encoding...")
+            
+            df = pd.read_csv(file_path, encoding=encoding, on_bad_lines='skip')
+            print(f"Dataset successfully loaded with {df.shape[0]} rows and {df.shape[1]} columns")
+            
+            return df
+        except Exception as e:
+            print(f"Failed to load with {encoding} encoding: {e}")
+    
+    # If all encodings fail
+    print("Could not read the file with any of the attempted encodings.")
+    sys.exit(1)
 
-def load_data(filename):
-    """Load CSV data into a Pandas DataFrame, handling file encoding with fallbacks."""
-    try:
-        # Detect encoding
-        encoding = detect_file_encoding(filename)
-        print(f"Detected encoding for {filename}: {encoding}")
 
-        # Try reading the file with the detected encoding
-        return pd.read_csv(filename, encoding=encoding)
-    except Exception as primary_error:
-        print(f"Primary encoding {encoding} failed: {primary_error}")
+def convert_to_serializable(obj):
+    """Convert non-serializable objects to serializable formats."""
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [convert_to_serializable(item) for item in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.int64, np.float64, np.bool_)):
+        return obj.item()
+    elif pd.isna(obj):
+        return None
+    return obj
 
-        # Fallback encodings
-        fallback_encodings = ["utf-8-sig", "latin1"]
-        for fallback in fallback_encodings:
-            try:
-                print(f"Trying fallback encoding: {fallback}")
-                return pd.read_csv(filename, encoding=fallback)
-            except Exception as fallback_error:
-                print(f"Fallback encoding {fallback} failed: {fallback_error}")
-
-        # Raise error if all attempts fail
-        raise ValueError(f"Failed to load file {filename} with any encoding.")
-
-def generic_analysis(df):
-    """Perform generic analysis on the dataset."""
-    return {
-        "shape": df.shape,
-        "columns": df.columns.tolist(),
-        "dtypes": df.dtypes.to_dict(),
+def analyze_data_structure(df):
+    """Perform comprehensive data structure analysis."""
+    analysis = {
+        "total_rows": int(df.shape[0]),
+        "total_columns": int(df.shape[1]),
+        "column_types": {col: str(dtype) for col, dtype in df.dtypes.items()},
         "missing_values": df.isnull().sum().to_dict(),
-        "summary_stats": df.describe(include="all").to_dict(),
+        "missing_percentage": (df.isnull().sum() / len(df) * 100).to_dict(),
+        "unique_values": {col: int(df[col].nunique()) for col in df.columns}
     }
+    return analysis
 
-def preprocess_data(df):
-    """Preprocess data to handle missing values."""
-    numeric_df = df.select_dtypes(include=['float', 'int'])
-    imputer = SimpleImputer(strategy='mean')  # Replace missing values with the mean
-    numeric_df_imputed = pd.DataFrame(imputer.fit_transform(numeric_df), columns=numeric_df.columns)
-    return numeric_df_imputed
+def detect_outliers(df):
+    """Detect outliers using IQR method for numeric columns."""
+    outliers = {}
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    
+    for col in numeric_cols:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        outliers[col] = {
+            "lower_bound": float(lower_bound),
+            "upper_bound": float(upper_bound),
+            "outliers_count": int(((df[col] < lower_bound) | (df[col] > upper_bound)).sum())
+        }
+    
+    return outliers
 
-def preprocess_for_visualization(df, max_rows=1000):
-    """Limit the dataset to a subset for faster visualizations."""
-    if df.shape[0] > max_rows:
-        return df.sample(max_rows, random_state=42)
-    return df
+def perform_statistical_tests(df):
+    """Perform basic statistical tests."""
+    statistical_tests = {}
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    
+    for col in numeric_cols:
+        # Shapiro-Wilk test for normality
+        if len(df[col]) > 3:  # Minimum requirement for the test
+            _, p_value = stats.shapiro(df[col].dropna())
+            statistical_tests[col] = {
+                "normality_test": {
+                    "p_value": float(p_value),
+                    "is_normal": bool(p_value > 0.05)
+                }
+            }
+    
+    return statistical_tests
 
-def detect_feature_types(df):
-    """Detect feature types for special analyses."""
-    return {
-        "time_series": df.select_dtypes(include=['datetime']).columns.tolist(),
-        "geographic": [col for col in df.columns if any(geo in col.lower() for geo in ["latitude", "longitude", "region", "country"])],
-        "network": [col for col in df.columns if "source" in col.lower() or "target" in col.lower()],
-        "cluster": df.select_dtypes(include=['float', 'int']).columns.tolist()  # Numeric features for clustering
-    }
-
-def perform_special_analyses(df, feature_types):
-    """Perform special analyses based on feature types."""
-    analyses = {}
-
-    # Time Series Analysis
-    if feature_types["time_series"]:
-        analyses["time_series"] = [
-            f"Time-series features detected: {', '.join(feature_types['time_series'])}. "
-            "These can be used to observe trends or forecast future patterns."
-        ]
-    else:
-        analyses["time_series"] = ["No time-series features detected."]
-
-    # Geographic Analysis
-    if len(feature_types["geographic"]) >= 2:
-        analyses["geographic"] = [
-            f"Geographic features detected: {', '.join(feature_types['geographic'][:2])}. "
-            "These can be used to visualize or analyze spatial distributions."
-        ]
-    else:
-        analyses["geographic"] = ["No geographic features detected."]
-
-    # Network Analysis
-    if len(feature_types["network"]) >= 2:
-        analyses["network"] = [
-            f"Network relationships detected between {feature_types['network'][0]} and {feature_types['network'][1]}. "
-            "These can be analyzed for connectivity or collaborations."
-        ]
-    else:
-        analyses["network"] = ["No network features detected."]
-
-    # Cluster Analysis
-    if len(feature_types["cluster"]) > 1:
-        analyses["cluster"] = [
-            "Cluster analysis is feasible with the available numeric features. "
-            "This could help identify natural groupings in the data."
-        ]
-    else:
-        analyses["cluster"] = ["Not enough numeric features for cluster analysis."]
-
-    return analyses
-
-def create_visualizations(df):
-    """Generate and save visualizations based on data."""
-    numeric_df = preprocess_data(df)
-    visualization_df = preprocess_for_visualization(numeric_df)
-
+def generate_visualizations(df, output_dir):
+    """Generate comprehensive visualizations."""
+    plt.close('all')
+    charts = []
+    
+    # Set up matplotlib parameters for better aesthetics
+    plt.rcParams.update({
+        'font.size': 10,
+        'axes.titlesize': 12,
+        'axes.labelsize': 10
+    })
+    
     # Correlation Heatmap
-    if numeric_df.shape[1] > 1:
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", cbar_kws={'shrink': 0.8})
-        plt.title("Correlation Heatmap", fontsize=16)
-        plt.savefig("correlation_heatmap.png")
+    numeric_df = df.select_dtypes(include=[np.number])
+    if len(numeric_df.columns) > 1:
+        plt.figure(figsize=(12, 10))
+        corr_matrix = numeric_df.corr()
+        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5, fmt=".2f", square=True)
+        plt.title("Correlation Heatmap of Numeric Features", fontsize=14)
+        corr_path = os.path.join(output_dir, "correlation_heatmap.png")
+        plt.tight_layout()
+        plt.savefig(corr_path, dpi=300)
+        charts.append(corr_path)
         plt.close()
-
-    # Outlier Detection with Seaborn Scatter Plot
-    if visualization_df.shape[1] > 1:
-        model = IsolationForest(random_state=42)
-        visualization_df['outlier_score'] = model.fit_predict(visualization_df)
-        plt.figure(figsize=(8, 6))
-        sns.scatterplot(data=visualization_df, x=visualization_df.columns[0], y=visualization_df.columns[1], hue='outlier_score', palette="Set1")
-        plt.title("Outlier Detection (Scatter Plot)", fontsize=16)
-        plt.savefig("outlier_detection.png")
+    
+    # Box plots for numeric columns
+    numeric_cols = numeric_df.columns
+    if len(numeric_cols) > 0:
+        plt.figure(figsize=(15, 6))
+        df[numeric_cols].boxplot()
+        plt.title("Box Plot of Numeric Features", fontsize=14)
+        plt.xticks(rotation=45)
+        box_path = os.path.join(output_dir, "numeric_boxplot.png")
+        plt.tight_layout()
+        plt.savefig(box_path, dpi=300)
+        charts.append(box_path)
         plt.close()
-
-    # Pair Plot for Relationship Analysis (limited columns)
-    if visualization_df.shape[1] > 1:
-        selected_columns = visualization_df.columns[:5]  # Limit to first 5 numeric columns
-        sns.pairplot(visualization_df[selected_columns])
-        plt.savefig("pairplot_analysis.png")
+    
+    # Categorical feature distribution
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+    for col in categorical_cols[:3]:  # Limit to first 3 categorical columns
+        plt.figure(figsize=(10, 6))
+        value_counts = df[col].value_counts()
+        sns.barplot(x=value_counts.index, y=value_counts.values)
+        plt.title(f"Distribution of {col}", fontsize=14)
+        plt.xlabel(col, fontsize=12)
+        plt.ylabel("Count", fontsize=12)
+        plt.xticks(rotation=45, ha='right')
+        cat_path = os.path.join(output_dir, f"{col}_distribution.png")
+        plt.tight_layout()
+        plt.savefig(cat_path, dpi=300)
+        charts.append(cat_path)
         plt.close()
+    
+    return charts
 
-    # Distribution Plot
-    for col in visualization_df.columns[:5]:  # Limit to first 5 numeric columns
-        plt.figure(figsize=(8, 6))
-        sns.histplot(visualization_df[col], kde=True, color="skyblue")
-        plt.title(f"Distribution of {col}", fontsize=16)
-        plt.savefig(f"distribution_{col}.png")
-        plt.close()
+def call_llm_with_analysis(data_analysis, charts):
+    """Call LLM to generate narrative based on data analysis."""
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {AIPROXY_TOKEN}"
+        }
+        
+        # Convert data_analysis to JSON-serializable format
+        serializable_analysis = convert_to_serializable(data_analysis)
+        
+        # Prepare a comprehensive prompt
+        prompt = (
+            "Analyze the following dataset and provide a comprehensive narrative:\n\n"
+            f"Dataset Structure:\n{json.dumps(serializable_analysis, indent=2)}\n\n"
+            "Key Points to Cover:\n"
+            "1. Brief overview of the dataset\n"
+            "2. Key characteristics and interesting patterns\n"
+            "3. Potential insights and recommendations\n"
+            "4. Limitations or areas requiring further investigation\n"
+        )
+        
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1000
+        }
+        
+        response = requests.post(AIPROXY_URL, headers=headers, json=data)
+        response.raise_for_status()
+        narrative = response.json()["choices"][0]["message"]["content"]
+        
+        return narrative
+    except Exception as e:
+        print(f"Error generating narrative: {e}")
+        return "Unable to generate narrative due to an error."
 
-    return ["correlation_heatmap.png", "outlier_detection.png", "pairplot_analysis.png"]
-
-def narrate_story(summary, insights, charts, special_analyses):
-    """Generate a narrative story about the analysis."""
-    special_analyses_summary = "\n".join(
-        f"{key.capitalize()} Analysis:\n" + "\n".join(value)
-        for key, value in special_analyses.items()
-    )
-    prompt = (
-        f"The dataset has the following properties:\n{summary}\n"
-        f"Insights:\n{insights}\n"
-        f"Special Analyses:\n{special_analyses_summary}\n"
-        f"The visualizations generated are: {', '.join(charts)}.\n"
-        "Please summarize the dataset, describe the analysis performed, key findings, and any implications in Markdown format. "
-        "Do not include code block delimiters like ```markdown or similar at the start or end of the Markdown text. "
-        "Ensure the content is directly usable as a Markdown file without requiring edits."
-    )
-    return query_chat_completion(prompt)
-
-def save_readme(content, charts):
-    """Save narrative and charts as README.md."""
-    with open("README.md", "w") as file:
-        file.write(content)
+def write_readme(output_dir, narrative, charts):
+    """Write comprehensive README.md with narrative and image references."""
+    readme_path = os.path.join(output_dir, "README.md")
+    
+    with open(readme_path, "w") as f:
+        f.write("# Automated Data Analysis Report\n\n")
+        f.write("## Analysis Narrative\n\n")
+        f.write(narrative + "\n\n")
+        
+        f.write("## Visualizations\n\n")
         for chart in charts:
-            file.write(f"![{chart}]({chart})\n")
+            chart_name = os.path.basename(chart)
+            encoded_chart_name = urllib.parse.quote(chart_name)
+            f.write(f"### {chart_name}\n")
+            f.write(f"![{chart_name}]({encoded_chart_name})\n\n")
 
-# Main execution
-if __name__ == "__main__":
-    import sys
+                
+    print(f"README.md generated at {readme_path}")
 
+def main():
     if len(sys.argv) != 2:
         print("Usage: uv run autolysis.py <dataset.csv>")
         sys.exit(1)
 
-    dataset = sys.argv[1]
+    file_path = sys.argv[1]
+    output_dir = os.path.splitext(file_path)[0]
+    os.makedirs(output_dir, exist_ok=True)
 
-    try:
-        # Load the dataset
-        df = load_data(dataset)
+    # Load and analyze data
+    df = read_csv_safe(file_path)
+    
+    # Perform comprehensive analysis
+    data_analysis = {
+        "structure": analyze_data_structure(df),
+        "outliers": detect_outliers(df),
+        "statistical_tests": perform_statistical_tests(df)
+    }
+    
+    # Generate visualizations
+    charts = generate_visualizations(df, output_dir)
+    
+    # Generate narrative
+    narrative = call_llm_with_analysis(data_analysis, charts)
+    
+    # Write README
+    write_readme(output_dir, narrative, charts)
 
-        # Perform analysis
-        summary = generic_analysis(df)
-        print("Generic analysis completed.")
+    print("Analysis complete!")
 
-        # Detect feature types
-        feature_types = detect_feature_types(df)
-
-        # Perform special analyses
-        special_analyses = perform_special_analyses(df, feature_types)
-
-        # Query the LLM for additional insights
-        insights = query_chat_completion(
-            f"Analyze this dataset summary:\n{summary}\nProvide key insights and any suggestions for improvement."
-        )
-        print("LLM insights retrieved.")
-
-        # Create visualizations
-        charts = create_visualizations(df)
-        print("Visualizations created.")
-
-        # Narrate the story
-        story = narrate_story(summary, insights, charts, special_analyses)
-        print("Narrative created.")
-
-        # Save README.md
-        save_readme(story, charts)
-        print("README.md generated.")
-    except Exception as e:
-        print("Error:", e)
+if __name__ == "__main__":
+    main()
