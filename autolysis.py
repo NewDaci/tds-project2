@@ -339,8 +339,10 @@ def main():
         sys.exit(1)
 
     file_path = sys.argv[1]
-    output_dir = os.path.splitext(file_path)[0]
-    os.makedirs(output_dir, exist_ok=True)
+    # output_dir = os.path.splitext(file_path)[0]
+    # os.makedirs(output_dir, exist_ok=True)
+    output_dir = "."
+
 
     try:
         df = read_csv_safe(file_path)
