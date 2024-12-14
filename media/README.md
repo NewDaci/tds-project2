@@ -2,44 +2,46 @@
 
 ## Analysis Narrative
 
-### Comprehensive Narrative on the Dataset
+### Narrative Analysis of the Dataset
 
-#### 1. Brief Overview of the Dataset
+#### 1. **Dataset Overview**
+The dataset consists of 2,652 entries across 8 columns, providing a multifaceted view of a set of evaluations. The columns include categorical attributes such as "date," "language," "type," "title," and "by," along with numerical evaluations such as "overall," "quality," and "repeatability." The dataset, structured to collect qualitative assessments, exhibits various data characteristics that warrant closer inspection to extract meaningful insights.
 
-The dataset consists of 2,652 observations and is structured with eight columns representing various attributes: `date`, `language`, `type`, `title`, `by`, `overall`, `quality`, and `repeatability`. The dataset captures a range of information, with most columns populated with categorical data (e.g., `language`, `type`, `title`, `by`) and numerical assessments (`overall`, `quality`, `repeatability`). There are a few missing values in `date` (99) and `by` (262), but the rest of the columns are fully populated. The `overall` ratings are assessed on a scale where the outlier analysis reveals notable insights.
+#### 2. **Key Characteristics**
+- **Missing Values:** There are a total of 99 missing entries for the "date" column, representing 3.73% of the dataset. Additionally, there are 262 missing entries for the "by" column (approximately 9.88%). All other columns have no missing values, indicating a relatively complete dataset for most attributes.
+  
+- **Unique Values:** The dataset holds 2,055 unique dates, suggesting a broad time frame. In terms of languages, there are 11 unique entries, and the "type," "title," and "by" columns have 8, 2,312, and 1,528 unique entries respectively, indicating a rich diversity in content. The numerical evaluations—overall, quality, and repeatability—exhibit lower unique counts (5 each for overall and quality, 3 for repeatability), suggesting a more standardized evaluation framework.
 
-#### 2. Key Characteristics and Interesting Patterns
+- **Outliers:** The overall scores show a significant count of outliers (1,216 instances) with nearly all values clustered around the lower threshold (a lower bound of 3.0). In contrast, quality evaluations have 24 outliers while repeatability has none, suggesting that most evaluations are homogeneous and possibly indicate a lack of variance in quality assessments.
 
-- **Dimensions**: The dataset has 2,652 rows, 8 columns, with a variety of categorical and numerical variables.
-- **Missing Values**: The missing values are relatively low overall (approximately 3.73% for `date` and almost 10% for `by`), specifically indicating some gaps in contributor data which could affect insights related to authorship.
-- **Unique Value Count**: There are 2055 unique dates, 11 unique languages, 8 types, and 2312 unique titles, with an extensive diversity in the `title` column.
-- **Outliers**: A significant number of outliers were detected in the `overall` ratings. Specifically, 1216 entries fall outside the established bounds, suggesting these ratings show a highly skewed distribution, further reaffirmed by the normality test results (p-value is extremely low, indicating non-normality). The `quality` ratings also exhibit non-normality with some outliers identified.
-- **Language Diversity**: With 11 unique languages represented, it prompts considerations of linguistic and cultural variations affecting the observed ratings.
+- **Statistical Normality:** A series of normality tests reveal that none of the numerical attributes (overall, quality, and repeatability) follow a normal distribution, as indicated by extremely low p-values. This finding suggests that analysis involving means and standard deviations could be misleading and emphasizes the need for non-parametric methods for further exploration.
 
-#### 3. Potential Insights and Recommendations
+#### 3. **Insights and Recommendations**
+- **Content Diversity:** The high number of unique titles (2,312) alongside a significant number of entries indicates a large volume of distinct evaluations. Content creators or evaluators might benefit from this vast array by identifying trending topics or themes.
 
-- **Outlier Investigation**: The high number of outliers in the `overall` ratings indicates a need to explore the distribution of these ratings further. It would be beneficial to dissect the underlying causes—whether these reflect true variability in quality or anomalies that should be addressed.
-- **Quality Metrics**: Given that the normality tests for quality and repeatability also returned significant non-normality parameters, a detailed examination of how different types and languages affect quality and overall ratings could provide valuable insights into improving content quality.
-- **Missing 'by' Column**: The missing data in the `by` column, which indicates the contributor, signifies a need for efforts to capture comprehensive contributor information. Establishing systems to ensure contributor identification could enrich insights related to authorship impacts on overall ratings.
-- **Cross-Linguistic Analysis**: Given the dataset's multilingual compositions, further analysis on how language correlates with `overall`, `quality`, and `repeatability` could enhance understanding of performance across cultural contexts, providing tailored recommendations for different language speakers.
+- **Data Completeness and Quality:** The relative completeness of the "language," "type," and evaluation columns suggests that strategies should focus on improving data collection processes to fill in the gaps in the "date" and "by" columns. Identifying factors leading to these missing values could enhance future datasets.
 
-#### 4. Limitations or Areas Requiring Further Investigation
+- **Focus on Outlier Analysis:** The significant number of outliers in the overall evaluations points to a need for a detailed investigation into the reasons behind these scores. Insights here could lead to better understanding of the evaluation process. Implementing techniques like winsorizing could help manage outlier influence in analysis if necessary.
 
-- **Date Distribution**: Understanding the distribution and importance of the dates could help contextualize trends over time and identify periods of significant activity or performance.
-- **Sample Representativity**: The dataset lacks a comprehensive analysis of whether these entries are representative of the population intended to be measured. Exploration into the selection and collection process could ensure findings are generalizable.
-- **Impact of Outliers**: With a substantial fraction of the dataset categorized as outliers, further investigation into these cases is critical. Are these outliers instances of exceptional performance or errors in data reporting?
-- **Quality Reliability**: As quality ratings show similar non-normal distributions, validation of what constitutes ‘quality’ within this context could be investigated further and standardized across measures.
+- **Norm Statistical Analysis:** Given the non-normality of the data, recommending the use of non-parametric statistical methods for analysis and hypothesis testing is prudent. This approach would yield more reliable insights into the relationships between the categorical variables and numerical scores.
 
-In conclusion, while the dataset sheds a significant amount of light on the observed phenomena, especially concerning outlier behaviors in ratings, areas for deeper exploration remain. There is substantial potential for practical insights that can enhance overarching trends, stifle inequalities in performance evaluation, and guide future actions in data handling and content quality assurance.
+#### 4. **Limitations for Further Investigation**
+- **Missing Data:** The high proportion of missing data in the "by" variable (nearly 10%) suggests a potential bias in analysis if not addressed. Understanding why this data is absent is critical for further investigation and may necessitate exploratory research methods to fill in gaps or assess its impact.
+
+- **Outlier Influence:** The presence of many outliers could skew the analysis, and without knowing the context of these evaluations, drawing meaningful conclusions may be challenging. An early-stage investigation into the causes of these outliers is essential.
+
+- **Dynamic Nature of Data:** Given the significant number of unique dates in the dataset, it suggests that ongoing data collection might yield different trends over time. Any conclusions drawn from this current dataset must be periodically reassessed to maintain relevancy.
+
+In summary, while the dataset offers a wealth of evaluations with notable insights into the assessment of various quality metrics, careful consideration of outliers, missing data, and the non-normal distribution of scores is essential for robust analysis. Future investigations should aim to mitigate these issues by enhancing data collection practices and employing appropriate statistical techniques.
 
 ## Visualizations
 
-### correlation_heatmap.png
-![correlation_heatmap.png](correlation_heatmap.png)
+### correlation_heatmap_compressed.jpg
+![correlation_heatmap_compressed.jpg](correlation_heatmap_compressed.jpg)
 
-### numeric_boxplot.png
-![numeric_boxplot.png](numeric_boxplot.png)
+### numeric_boxplot_compressed.jpg
+![numeric_boxplot_compressed.jpg](numeric_boxplot_compressed.jpg)
 
-### date_distribution.png
-![date_distribution.png](date_distribution.png)
+### date_distribution_compressed.jpg
+![date_distribution_compressed.jpg](date_distribution_compressed.jpg)
 
