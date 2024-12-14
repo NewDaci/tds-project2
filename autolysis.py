@@ -335,7 +335,7 @@ def write_readme(output_dir: str, narrative: str, charts: List[str]) -> None:
 
 def main():
     if len(sys.argv) != 2:
-        logger.error("Usage: uv run autolysis.py <dataset.csv>")
+        print("Usage: python autolysis.py <dataset.csv>")
         sys.exit(1)
 
     file_path = sys.argv[1]
