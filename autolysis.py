@@ -56,9 +56,6 @@ logger = logging.getLogger("data_analysis")
 # Load environment variables
 load_dotenv()
 AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN") or os.environ.get("AI_PROXY")
-if not AIPROXY_TOKEN:
-    logger.error("API Proxy token is not set in environment variables.")
-    sys.exit(1)  # Exit if the token is not found
 
 class DataReadError(Exception):
     """Specific exception for data reading errors."""
@@ -282,6 +279,128 @@ def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
     
     return charts
 
+def analyze_images_with_vision(charts: List[str], api_token: str) -> List[Dict[str, Any]]:
+    """
+    Analyze images using vision capabilities via AI Proxy.
+    
+    Args:
+        charts (List[str]): Paths to image files to analyze
+        api_token (str): API token for authentication
+    
+    Returns:
+        List of analysis results for each image
+    """
+    def encode_image(image_path: str) -> str:
+        """
+        Encode an image to base64.
+        
+        Args:
+            image_path (str): Path to the image file
+        
+        Returns:
+            Base64 encoded string of the image
+        """
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    
+    # List to store analysis results
+    image_analyses = []
+    
+    # Vision analysis prompts for different visualization types
+    analysis_prompts = {
+        "correlation_heatmap.png": """
+        You are an expert data scientist analyzing a correlation heatmap. 
+        Carefully examine the visualization and provide:
+        1. Key relationships between variables
+        2. Strength of correlations (strong positive/negative)
+        3. Any surprising or unexpected correlations
+        4. Potential insights for further investigation
+        
+        Provide a concise, technical analysis highlighting the most important patterns.
+        """,
+        
+        "numeric_boxplot.png": """
+        You are a statistical expert analyzing a boxplot of numeric features. 
+        Carefully examine the visualization and provide:
+        1. Distribution characteristics of each feature
+        2. Identification of outliers
+        3. Comparative analysis of feature ranges
+        4. Potential data quality or collection issues
+        
+        Provide a detailed, technical breakdown of the numeric feature distributions.
+        """,
+        
+        "distribution.png": """
+        You are an expert in categorical data analysis. 
+        Carefully examine the categorical feature distribution visualization and provide:
+        1. Most frequent categories
+        2. Distribution characteristics
+        3. Any unexpected or interesting patterns
+        4. Potential implications of the distribution
+        
+        Provide a concise, insightful analysis of the categorical feature.
+        """
+    }
+    
+    # API endpoint
+    endpoint = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+    
+    for chart_path in charts:
+        try:
+            # Determine appropriate prompt based on filename
+            prompt = next(
+                (prompt for key, prompt in analysis_prompts.items() if key in chart_path), 
+                analysis_prompts["correlation_heatmap.png"]  # Default prompt
+            )
+            
+            # Prepare API payload
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url", 
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{encode_image(chart_path)}",
+                                    "detail": "low"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 300
+            }
+            
+            # Make API request
+            response = requests.post(
+                endpoint,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_token}"
+                },
+                json=payload
+            )
+            
+            # Process response
+            if response.status_code == 200:
+                result = response.json()
+                analysis = result['choices'][0]['message']['content']
+                
+                image_analyses.append({
+                    "image_path": chart_path,
+                    "analysis": analysis
+                })
+            else:
+                logger.error(f"Vision API error for {chart_path}: {response.text}")
+        
+        except Exception as e:
+            logger.error(f"Error analyzing {chart_path}: {e}")
+    
+    return image_analyses
+
 def generate_dynamic_prompt(user_input: str, analysis_type: str, data_summary: dict) -> str:
     """
     Generates a dynamic prompt for the LLM based on user input and analysis type.
@@ -337,23 +456,46 @@ def call_llm_with_analysis(data_analysis: Dict[str, Any], charts: List[str]) -> 
         logger.error(f"LLM API request failed: {e}")
         raise
 
-def write_readme(output_dir: str, narrative: str, charts: List[str]) -> None:
+def write_readme(output_dir: str, narrative: str, charts: List[str], vision_analyses: List[Dict[str, Any]]) -> None:
     """
-    Write comprehensive README.md with narrative and image references.
+    Write comprehensive README.md with narrative, image references, and vision-based analyses.
+    
+    Args:
+        output_dir (str): Directory to write README
+        narrative (str): Overall data analysis narrative
+        charts (List[str]): List of chart file paths
+        vision_analyses (List[Dict[str, Any]]): List of vision-based image analyses
     """
     readme_path = os.path.join(output_dir, "README.md")
     
     with open(readme_path, "w") as f:
         f.write("# Automated Data Analysis Report\n\n")
+        
+        # Write overall narrative
         f.write("## Analysis Narrative\n\n")
         f.write(narrative + "\n\n")
         
+        # Write visualizations section
         f.write("## Visualizations\n\n")
+        
+        # Create a mapping of chart filenames to their vision analyses
+        vision_analysis_map = {
+            os.path.basename(analysis['image_path']): analysis['analysis'] 
+            for analysis in vision_analyses
+        }
+        
         for chart in charts:
             chart_name = os.path.basename(chart)
             encoded_chart_name = urllib.parse.quote(chart_name)
+            
+            # Write chart image
             f.write(f"### {chart_name}\n")
             f.write(f"![{chart_name}]({encoded_chart_name})\n\n")
+            
+            # Write corresponding vision analysis if available
+            if chart_name in vision_analysis_map:
+                f.write("#### Vision-Based Image Analysis\n\n")
+                f.write(f"{vision_analysis_map[chart_name]}\n\n")
 
     logger.info(f"README.md generated at {readme_path}")
 
@@ -384,12 +526,14 @@ def main():
             logger.error("AIPROXY_TOKEN is not set. Please set the environment variable.")
             sys.exit(1)
         
+         # Call vision analysis after generating charts
+        vision_analyses = analyze_images_with_vision(charts, AIPROXY_TOKEN)
+        
         # Call LLM for narrative generation
         narrative = call_llm_with_analysis(data_analysis, charts)
         
-        # Write README with narrative and charts
-        write_readme(output_dir, narrative, charts)
-
+        # Write README with narrative, charts, and vision analyses
+        write_readme(output_dir, narrative, charts, vision_analyses)
         logger.info("Analysis complete!")
 
     except Exception as e:
