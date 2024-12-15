@@ -169,7 +169,7 @@ def batch_resize_and_compress(images: List[Dict], size=(512, 512), quality=75):
         for future in futures:
             future.result()  # Ensure all tasks complete
 
-def resize_and_compress_image(input_path: str, output_path: str, size: tuple = (512, 512), quality: int = 75):
+def resize_and_compress_image(input_path: str, output_path: str, size: tuple = (512, 512)):
     """
     Resize and compress image to smaller size with reduced quality.
     
@@ -177,23 +177,23 @@ def resize_and_compress_image(input_path: str, output_path: str, size: tuple = (
         input_path (str): Path to input image
         output_path (str): Path to save compressed image
         size (tuple): Desired image size (width, height)
-        quality (int): JPEG compression quality (1-95)
     """
     try:
         with Image.open(input_path) as img:
             # Resize image while maintaining aspect ratio
             img.thumbnail(size, Image.LANCZOS)
             
-            # Convert to RGB mode if needed
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
+            # Convert to RGBA mode if needed (PNG supports alpha channel)
+            if img.mode != 'RGBA':
+                img = img.convert('RGBA')
             
-            # Save with compression
-            img.save(output_path, 'JPEG', optimize=True, quality=quality)
+            # Save as PNG (PNG is lossless, so quality parameter is not used)
+            img.save(output_path, 'PNG', optimize=True)
         
         logger.info(f"Image compressed: {input_path} -> {output_path}")
     except Exception as e:
         logger.error(f"Error compressing image {input_path}: {e}")
+
 
 def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
     """
@@ -227,9 +227,12 @@ def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
         plt.close()
         
         # Compress the image
-        compressed_corr_path = os.path.join(output_dir, "correlation_heatmap_compressed.jpg")
+        compressed_corr_path = os.path.join(output_dir, "correlation_heatmap_compressed.png")
         resize_and_compress_image(corr_path, compressed_corr_path)
         charts.append(compressed_corr_path)
+        
+        # Delete original image after compression
+        os.remove(corr_path)
     
     # Box plots for numeric columns
     if len(numeric_df.columns) > 0:
@@ -244,9 +247,12 @@ def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
         plt.close()
         
         # Compress the image
-        compressed_box_path = os.path.join(output_dir, "numeric_boxplot_compressed.jpg")
+        compressed_box_path = os.path.join(output_dir, "numeric_boxplot_compressed.png")
         resize_and_compress_image(box_path, compressed_box_path)
         charts.append(compressed_box_path)
+        
+        # Delete original image after compression
+        os.remove(box_path)
     
     # Categorical feature distribution
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns
@@ -264,11 +270,15 @@ def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
         plt.close()
         
         # Compress the image
-        compressed_cat_path = os.path.join(output_dir, f"{col}_distribution_compressed.jpg")
+        compressed_cat_path = os.path.join(output_dir, f"{col}_distribution_compressed.png")
         resize_and_compress_image(cat_path, compressed_cat_path)
         charts.append(compressed_cat_path)
+        
+        # Delete original image after compression
+        os.remove(cat_path)
     
     return charts
+
 
 @retry(
     stop=stop_after_attempt(3),
@@ -335,13 +345,13 @@ def write_readme(output_dir: str, narrative: str, charts: List[str]) -> None:
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python autolysis.py <dataset.csv>")
+        print("Usage: uv run autolysis.py <dataset.csv>")
         sys.exit(1)
 
     file_path = sys.argv[1]
-    # output_dir = os.path.splitext(file_path)[0]
-    # os.makedirs(output_dir, exist_ok=True)
-    output_dir = "."
+    output_dir = os.path.splitext(file_path)[0]
+    os.makedirs(output_dir, exist_ok=True)
+    # output_dir = "."
 
 
     try:

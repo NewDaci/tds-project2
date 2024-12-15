@@ -2,77 +2,62 @@
 
 ## Analysis Narrative
 
-### Dataset Overview
+### Comprehensive Narrative on the Dataset
 
-The dataset comprises 2,363 rows and 11 columns, capturing various metrics linked to happiness and quality of life across 165 countries over a span of 19 years. The columns include socio-economic indicators such as "Log GDP per capita", "Healthy life expectancy at birth," and qualitative measures like "Life Ladder" and "Social support." Each entry corresponds to a particular year and country, offering a rich source of information for analysis in the realm of well-being and societal satisfaction.
+#### 1. Dataset Overview
+The dataset provided encompasses information on subjective well-being and various socio-economic indicators across different countries and years, containing a total of 2,363 records with 11 columns. The records include unique identifiers such as country names and years, alongside key indicators related to quality of life, economic performance, and social circumstances.
 
-### Key Characteristics
+#### 2. Key Characteristics
+- **Columns**: The dataset consists of columns capturing the following aspects:
+  - **Country name**: Identification of countries.
+  - **Year**: The time period of data collection.
+  - **Life Ladder**: A measure of subjective well-being.
+  - **Log GDP per capita**: A transformation of Gross Domestic Product per capita to reflect economic affluence.
+  - **Social Support**: The degree of support individuals can count on from others.
+  - **Healthy Life Expectancy at Birth**: An estimate of the number of years a newborn is expected to live in good health.
+  - **Freedom to Make Life Choices**: A measure of personal freedom regarding life decisions.
+  - **Generosity**: A metric related to the degree of charitable donations.
+  - **Perceptions of Corruption**: How corruption is viewed within societies.
+  - **Positive Affect & Negative Affect**: Indicators of emotional states.
 
-1. **Data Structure**:
-   - **Dimension**: Total rows = 2363; total columns = 11.
-   - **Column Types**: 
-     - "Country name" (categorical)
-     - "Year" (integer)
-     - Various happiness and life quality metrics (float)
+- **Missing Values**: Several columns exhibit missing values:
+  - **Generosity** has the highest percentage of missing data (3.43%).
+  - **Perceptions of Corruption** has 5.29% missing values, indicating potential issues with data collection or inconsistencies in how these measures were reported.
+  
+- **Outliers**: The dataset contains observations that deviate significantly from the norm:
+  - Notably, **Perceptions of Corruption** has the highest count of outliers (194), suggesting variability in how corruption is perceived across different contexts and possibly the influence of unique societal factors.
 
-2. **Missing Values**:
-   - Certain columns exhibit missing values:
-     - **Log GDP per capita**: 28 missing entries (1.2%)
-     - **Social support**: 13 missing entries (0.55%)
-     - **Healthy life expectancy at birth**: 63 missing entries (2.67%)
-     - **Freedom to make life choices**: 36 missing entries (1.52%)
-     - Other columns, like "Generosity," show a notable 81 missing entries (3.43%).
-   - Missing data can potentially lessen the robustness of the analysis.
+- **Normality of Distribution**: Statistical tests indicate that none of the variables are normally distributed, reflecting a potentially skewed or non-standard spread of the data. This may influence analyses requiring normality assumptions, such as parametric tests.
 
-3. **Unique Values**:
-   - The dataset contains a variety of unique values across variables, with "Life Ladder" exhibiting the most unique entries (1,814 unique values) versus "Country name" with 165 unique identifiers.
+#### 3. Insights and Recommendations
+- **Interrelation between Variables**: The indicators suggest a complex interplay between socio-economic factors and subjective well-being. For instance, countries with higher **Log GDP per capita** generally report higher **Life Ladder** scores. However, this relationship may not be straightforward due to the influence of social factors (like *Social Support* and *Freedom to Make Life Choices*), which should be explored in deeper analyses.
+  
+- **Target Areas for Improvement**: Countries with low **Healthy Life Expectancy** or **Freedom to Make Life Choices** could benefit from targeted social and health policies aimed at improving life satisfaction. For example, investing in healthcare systems could raise life expectancy, while promoting civic liberties may enhance individual happiness and satisfaction.
 
-4. **Outliers**:
-   - There are outliers detected, notably in "Social support" (48 outliers), "Generosity" (39 outliers), and "Perceptions of corruption" (194 outliers), indicating significant deviations in these areas, which might skew analyses.
+- **Data Quality and Completeness**: The presence of missing values and outliers raises concerns regarding data quality. Recommendations include performing data imputation to handle missing values thoughtfully or excluding certain records in analyses when necessary. Furthermore, understanding the reason behind the high number of outliers, especially in **Perceptions of Corruption**, should prompt a closer examination.
 
-5. **Normality Tests**:
-   - All tested variables display significant p-values (all < 0.05), suggesting that none of the distributions for these variables are normal, an important consideration for further statistical analyses.
+- **Further Analysis**: Given the non-normal distribution of the variables, employing non-parametric statistical methods would be recommended for future analyses to yield more reliable insights. Moreover, correlational studies and regressions could unveil deeper relationships within the dataset.
 
-### Insights and Recommendations
+#### 4. Limitations for Further Investigation
+- **Limited Temporal Scope**: The dataset spans 19 years, which may not represent long-term trends and patterns effectively. Extended timeframes could provide better insight into the dynamics of changes in well-being across nations.
 
-The insights drawn from this rich dataset can inform both policy and academic research:
+- **Geographical Bias**: With 165 unique countries, regional discrepancies may exist that warrant a more granular analysis. Certain regions may reflect unique socio-political or economic trends that could influence well-being differently than other regions. Comparative studies could yield interesting results.
 
-1. **Socio-Economic Influence on Happiness**:
-   - The significant interrelations among "Log GDP per capita," "Social support," and "Life Ladder" point to essential areas for policy makers to address. Economic factors are vital but should be complemented with community and social support systems for a holistic approach to improving life satisfaction.
+- **Social Norms and Cultural Factors**: The dataset does not capture cultural nuances that could significantly influence perceptions of well-being. Additional qualitative research may be beneficial.
 
-2. **Mitigation of Outliers**:
-   - The presence of numerous outliers in measures such as "Perceptions of corruption" prompts recommendations for further investigation into the contexts of these unusual values. Strategies could be developed to explore the conditions leading to extreme values in societal perceptions to facilitate targeted interventions.
+- **Causation vs. Correlation**: This analysis reveals correlations but cannot definitively establish causation. Further studies using experimental or longitudinal designs may be necessary to draw causal inferences.
 
-3. **Focus on Missing Data**:
-   - The relatively higher missing values in "Health expectancy at birth" and "Generosity” should prompt efforts to improve data collection mechanisms in these areas, especially in under-represented or at-risk populations.
-
-4. **Understanding the Global Landscape**:
-   - Given the number of unique countries and years, comparative analyses could yield insights into how happiness metrics have evolved globally. Country-specific studies could help tailor strategies to uplift well-being based on the unique socio-economic and cultural contexts.
-
-### Limitations for Further Investigation
-
-1. **Data Quality and Completeness**:
-   - The presence of missing values, especially in critical columns, raises questions regarding the generalizability of findings. Investigating the reasons behind these omissions could yield insights on data collection methodologies.
-
-2. **Non-Normal Data Distribution**:
-   - The non-normal nature of the data suggests that standard statistical tests reliant on normality might not be suitable, necessitating alternative methods robust to such violations.
-
-3. **Causality vs. Correlation**:
-   - The dataset primarily provides correlational insights; it does not imply causality between the measured variables. Longitudinal studies could be required to ascertain direct impacts and causal relationships.
-
-4. **Change Over Time**:
-   - As the dataset covers 19 years, temporal dynamics are crucial. Further analyses should consider how trends may shift over time and identify underlying factors contributing to these changes.
-
-In summary, the dataset represents a comprehensive snapshot of various factors influencing life satisfaction across countries, offering ample avenues for insightful analysis and actionable recommendations while also emphasizing the need for thorough investigations into its inherent limitations.
+### Conclusion
+The dataset offers valuable insights into the interconnections between wealth, health, and subjective well-being across various countries. However, careful consideration of the data quality, along with supplementary analyses, is crucial for drawing meaningful conclusions and formulating effective policies aimed at enhancing quality of life worldwide.
 
 ## Visualizations
 
-### correlation_heatmap_compressed.jpg
-![correlation_heatmap_compressed.jpg](correlation_heatmap_compressed.jpg)
+### correlation_heatmap_compressed.png
+![correlation_heatmap_compressed.png](correlation_heatmap_compressed.png)
 
-### numeric_boxplot_compressed.jpg
-![numeric_boxplot_compressed.jpg](numeric_boxplot_compressed.jpg)
+### numeric_boxplot_compressed.png
+![numeric_boxplot_compressed.png](numeric_boxplot_compressed.png)
 
-### Country name_distribution_compressed.jpg
-![Country name_distribution_compressed.jpg](Country%20name_distribution_compressed.jpg)
+### Country name_distribution_compressed.png
+![Country name_distribution_compressed.png](Country%20name_distribution_compressed.png)
 

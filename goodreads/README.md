@@ -2,56 +2,60 @@
 
 ## Analysis Narrative
 
-### Dataset Overview
+### 1. Dataset Overview
+The dataset comprises 10,000 rows and 23 columns, encompassing various attributes related to books, including identifiers, ratings, authors, publication years, and language codes. Each entry corresponds to distinct books with comprehensive metrics on their performance as reflected by user ratings on Goodreads.
 
-The dataset under analysis comprises a total of **10,000 rows** and **23 columns**, primarily focusing on various attributes of books from a Goodreads-like platform. The attributes include identifiers for the books, their authors, publication information, language codes, averaged ratings, and counts for different ratings and reviews. Each book is represented distinctly through `book_id`, which serves as a unique identifier.
+### 2. Key Characteristics
 
-### Key Characteristics
+#### A. Column Structure
+- **Identifiers**: The dataset includes multiple IDs such as `book_id`, `goodreads_book_id`, `best_book_id`, and `work_id`, with no missing values, ensuring all entries are uniquely identifiable.
+- **Publication and Title Information**: Attributes such as `original_publication_year`, `original_title`, and `title` provide additional context about each book. Notably, the `original_publication_year` has 21 missing values, indicating some books may lack publication data.
+- **Authors and Language**: The dataset can account for multiple authors and languages, contributing to the background and diversity of selections. The `language_code` has around 10.84% missing values.
+- **Rating Metrics**: Detailed rating categories are captured (1 to 5 stars) alongside overall ratings such as `average_rating`, `ratings_count`, and `work_ratings_count`, providing a multi-faceted view of user reception.
+  
+#### B. Missing Values
+The analysis highlights certain columns with missing data:
+- `isbn` (7.0%), `isbn13` (5.85%), `original_title` (5.85%), and `language_code` (10.84%) represent the most significant proportions, suggesting potential gaps in standardization or data entry processes.
 
-- **Data Completeness**: The dataset is relatively complete, with the `isbn`, `isbn13`, `original_publication_year`, `original_title`, and `language_code` fields exhibiting missing values. Specifically, the **isbn** and **isbn13** fields have missing percentages of **7.0%** and **5.85%**, respectively.
+#### C. Unique Values
+- There are 10,000 unique entries for each of the IDs, but some attributes exhibit fewer unique entries (e.g., `books_count` has 597 unique values), indicating that many books may share attributes like primary authors or publication years.
 
-- **Unique Values**: There are **10,000 unique values** across identifiers (`book_id`, `goodreads_book_id`, `best_book_id`, `work_id`). In contrast, attributes like `authors` show a lesser count of **4,664 unique authors**, indicating a diverse collection but also suggesting some authors contribute multiple titles.
+### 3. Insights and Recommendations
 
-- **Publication Year Insights**: The `original_publication_year` spans **293 unique years**, with a notable **0.21%** of the dataset lacking this information. This reveals a historical spread of books available in the dataset.
+#### A. Rating Distribution
+- The dataset reveals a skewed distribution in ratings, with the majority of books receiving high ratings (ratings of 4 and 5 stars are predominant). This skewness may suggest user bias towards positively reviewing books, potentially sidelining less popular or critically acclaimed works.
 
-- **Rating Distribution**: The dataset presents **184 unique average ratings** with **ratings count** entries varying significantly. The most rated category (1-5 stars) indicates a preference for 4 and 5-star ratings, with **8,103** books rated at 5 stars compared to **2,630** at 1 star.
+#### B. Diversity of Authors and Styles
+- With 4,664 unique authors, the dataset reflects a broad range of literary styles and voices, supporting reader diversity. This information can inform curate reading lists or promotional campaigns for underrepresented authors.
 
-- **Outlier Presence**: Multiple columns exhibit outliers, with **books_count**, `isbn13`, and `original_publication_year` being particularly affected. The presence of **async outliers** in **ratings** and **ratings counts** may skew interpretations relating to popular books and their reception.
+#### C. Recommendations for Analysis
+- A deeper exploration of publication years alongside average ratings could reveal trends regarding the performance and popularity of contemporary versus classic literature.
+- Segmenting data based on language could yield insights into audience preferences across different linguistic demographics.
 
-### Insights and Recommendations
+### 4. Limitations for Further Investigation
 
-1. **Diversity of Literature**: There is an opportunity to explore literature spanning various periods due to the extensive range of publication years. This can guide marketing strategies for different audience segments (e.g., periodic themed collections).
+#### A. Data Completeness
+- The presence of missing values across significant attributes like `original_title` and `language_code` might affect the integrity of analyses. It is crucial to understand how these gaps could influence conclusions drawn from user ratings and trends.
 
-2. **Focus on High Rating Books**: With a substantial preference for highly rated books, marketers could highlight "top-rated" titles to attract readers. These could include curating lists based on user preferences or trending high-rated books.
+#### B. Outlier Analysis
+- Many columns, particularly ratings and publication years, show a significant number of outliers, indicating potential data entry issues or the need for normalization. Further investigation of these outliers will be necessary to assess their influence on the overall dataset integrity.
 
-3. **Identify Underrepresented Authors**: Authors with fewer titles in the dataset could be showcased to diversify recommendations for readers and enrich the content offered on the platform.
+#### C. Normality of Distributions
+- Statistical tests indicate that most attributes, including key ratings metrics, do not follow a normal distribution, suggesting that traditional statistical models relying on normality might not be appropriate for analyses involving these datasets.
 
-4. **Investigate Missing ISBN Data**: The missing values in the ISBNs are significant for categorizing and linking books properly in international databases and marketplaces. Efforts should be taken to fill these gaps.
+#### D. Temporal Aspects
+- The dataset does not include temporal dimensions (e.g., when ratings were given), limiting insights into how popularity and ratings might change over time and potentially missing trends in user behavior.
 
-5. **Outlier Treatment**: The dataset's outliers may be influencing trend analyses negatively. Proper statistical methods should be employed to deal with these outliers to attain a more accurate representation of book performances.
-
-### Limitations for Further Investigation
-
-1. **Statistical Normality**: Many columns failed the normality test, suggesting non-normal distributions that could complicate standard statistical analyses, affecting inferential statistics. Non-parametric methods may need to be explored for analyses.
-
-2. **Missing Data Implications**: Columns with missing values (such as `original_title` and `language_code`) could potentially skew insights, making it essential to consider methods for imputation or exclusion based on the context of analysis.
-
-3. **Homogeneity in User Rating**: Despite the broad spread of ratings, a closer examination into the demographic or psychographic data of the users providing these ratings is lacking. Understanding user biases could provide deeper insights into the dataset.
-
-4. **Temporal Dynamics**: The dataset lacks temporal analysis aspects; thus, understanding how book ratings and reviews evolve over time is limited and would require additional data points on reviews or ratings timestamping.
-
-### Conclusion
-
-This analysis of the dataset presents insightful characteristics regarding books, their ratings, and the authors within the collection. It reflects the importance of proper handling of missing data and outliers to enhance data integrity. Additionally, the recommendations put forth can assist in leveraging this dataset for marketing strategies while addressing limitations that may require focused investigations going forward.
+In summary, while the dataset provides a rich tapestry of information about books and their reception, careful attention to data quality, distribution, and temporal factors will be essential for yielding actionable insights and recommendations for authors, readers, and publishers alike.
 
 ## Visualizations
 
-### correlation_heatmap_compressed.jpg
-![correlation_heatmap_compressed.jpg](correlation_heatmap_compressed.jpg)
+### correlation_heatmap_compressed.png
+![correlation_heatmap_compressed.png](correlation_heatmap_compressed.png)
 
-### numeric_boxplot_compressed.jpg
-![numeric_boxplot_compressed.jpg](numeric_boxplot_compressed.jpg)
+### numeric_boxplot_compressed.png
+![numeric_boxplot_compressed.png](numeric_boxplot_compressed.png)
 
-### isbn_distribution_compressed.jpg
-![isbn_distribution_compressed.jpg](isbn_distribution_compressed.jpg)
+### isbn_distribution_compressed.png
+![isbn_distribution_compressed.png](isbn_distribution_compressed.png)
 
