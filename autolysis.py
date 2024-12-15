@@ -55,7 +55,10 @@ logger = logging.getLogger("data_analysis")
 
 # Load environment variables
 load_dotenv()
-AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN")
+AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN") or os.environ.get("AI_PROXY")
+if not AIPROXY_TOKEN:
+    logger.error("API Proxy token is not set in environment variables.")
+    sys.exit(1)  # Exit if the token is not found
 
 class DataReadError(Exception):
     """Specific exception for data reading errors."""
@@ -279,6 +282,20 @@ def generate_visualizations(df: pd.DataFrame, output_dir: str) -> List[str]:
     
     return charts
 
+def generate_dynamic_prompt(user_input: str, analysis_type: str, data_summary: dict) -> str:
+    """
+    Generates a dynamic prompt for the LLM based on user input and analysis type.
+    
+    Args:
+    user_input (str): The custom user input to drive the analysis.
+    analysis_type (str): Type of analysis (e.g., "outlier detection", "correlation analysis").
+    data_summary (dict): A summary of the data to be analyzed.
+
+    Returns:
+    str: The dynamic LLM prompt.
+    """
+    prompt = f"User requested {analysis_type} on the dataset. Data summary: {data_summary}. Based on user input: {user_input}, please generate the necessary analysis and visualization."
+    return prompt
 
 @retry(
     stop=stop_after_attempt(3),
@@ -296,15 +313,10 @@ def call_llm_with_analysis(data_analysis: Dict[str, Any], charts: List[str]) -> 
         }
         
         serializable_analysis = convert_to_serializable(data_analysis)
-        
-        prompt = (
-            "Analyze the following dataset and provide a comprehensive narrative:\n\n"
-            f"Dataset Structure:\n{json.dumps(serializable_analysis, indent=2)}\n\n"
-            "Key Points:\n"
-            "1. Dataset overview\n"
-            "2. Key characteristics\n"
-            "3. Insights and recommendations\n"
-            "4. Limitations for further investigation\n"
+        prompt = generate_dynamic_prompt(
+            user_input="Provide insights and recommendations for this dataset.",
+            analysis_type="Comprehensive Analysis",
+            data_summary=serializable_analysis
         )
         
         data = {
@@ -313,8 +325,10 @@ def call_llm_with_analysis(data_analysis: Dict[str, Any], charts: List[str]) -> 
             "max_tokens": 1000
         }
         
-        response = requests.post("https://aiproxy.sanand.workers.dev/openai/v1/chat/completions", 
-                                 headers=headers, json=data)
+        response = requests.post(
+            "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions", 
+            headers=headers, json=data
+        )
         response.raise_for_status()
         
         return response.json()["choices"][0]["message"]["content"]

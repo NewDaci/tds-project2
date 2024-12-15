@@ -2,47 +2,105 @@
 
 ## Analysis Narrative
 
-### Dataset Overview
+Based on the provided dataset summary, we will conduct a comprehensive analysis that includes insights and recommendations. Given the context, we can assume the dataset contains various metrics related to well-being across different countries and years. 
 
-The provided dataset comprises 2,363 rows and 11 columns, detailing various socio-economic and psychological metrics across 165 countries over a span of 19 years. The dataset is structured with columns representing critical indicators such as the "Life Ladder," which pertains to subjective well-being; "Log GDP per capita," as a measure of economic performance; and various psychosocial factors, including social support and perceptions of corruption. This broad range of metrics aims to provide insights into how economic and social factors influence well-being across different countries and time periods.
+### 1. Data Overview
 
-### Key Characteristics
-
-- **Column Types**: The dataset contains different types of numerical columns, including integers (year) and floating-point numbers encompassing life satisfaction metrics and economic indicators.
+- **Rows and Columns**: The dataset consists of 2363 rows and 11 columns.
+- **Columns**: Key indicators include `Country name`, `year`, `Life Ladder`, `Log GDP per capita`, and various social metrics like `Social support`, `Freedom to make life choices`, etc.
   
-- **Missing Values**: Missing values are present across several columns, notably in "Generosity" with 81 missing instances (3.43% of total), and "Perceptions of corruption" with 125 missing instances (5.29%). Other columns like "Healthy life expectancy at birth" and "Freedom to make life choices" also exhibit considerable missing values, indicating areas where data collection may be insufficient in certain regions or years.
+### 2. Missing Values Analysis
 
-- **Unique Values**: The dataset features a rich diversity of values, with unique entries like 1,814 distinct "Life Ladder" scores and 1,760 "Log GDP per capita" values, suggesting varied life satisfaction levels and economic conditions across countries.
+- **Missing Values**: 
+  - The dataset reports varying percentages of missing data across columns:
+    - `Log GDP per capita`: 1.18%
+    - `Social support`: 0.55%
+    - `Healthy life expectancy at birth`: 2.67%
+    - `Freedom to make life choices`: 1.52%
+    - `Generosity`: 3.43%
+    - `Perceptions of corruption`: 5.29%
+    - `Positive affect`: 1.02%
+    - `Negative affect`: 0.68%
+  
+- **Recommendation**: Address missing values through imputation or removal based on their impact on analysis. For low percentages, mean/mode imputation may be sufficient.
 
-- **Outliers**: Certain variables display significant outliers. For instance, the "Perceptions of corruption" feature has the highest count of outliers (194 instances), which may indicate significant disparities in how different countries perceive corruption. The "Social support" metric also reveals 48 outliers, suggesting extreme variations in social trust and communal factors.
+### 3. Outliers Analysis
 
-- **Statistical Normality**: None of the variables pass normality testing, indicating a skewed distribution in the data. This non-normality should be taken into account when performing analyses or modeling, as it may affect the validity of statistical inferences.
+- **Outliers**: Several columns display a significant number of outliers:
+  - `Social support`: 48 outliers
+  - `Healthy life expectancy at birth`: 20 outliers
+  - `Generosity`: 39 outliers
+  - `Perceptions of corruption`: 194 outliers
+  
+- **Recommendation**: Investigate the reasons behind outliers, particularly in `Perceptions of corruption`, which has a high count. Depending on the analysis, consider robust statistical methods that are less impacted by these outliers.
 
-### Insights and Recommendations
+### 4. Statistical Tests & Distribution Properties
 
-1. **Correlation Analysis**: Investigating correlations between metrics (e.g., between "Log GDP per capita" and "Life Ladder") could yield insights on how economic conditions correlate with subjective well-being. A strong positive correlation could support policies that enhance economic conditions to improve life satisfaction.
+- **Normality Tests**: All tested variables (Life Ladder, Log GDP per capita, etc.) do not follow a normal distribution, as evident from low p-values.
+  
+- **Recommendation**: Non-parametric statistical methods should be employed for further analysis and hypothesis testing since the assumptions for normality are not met.
 
-2. **Addressing Missing Values**: The presence of missing values necessitates a careful approach. Imputation methods could be applied for variables with fewer missing instances to retain as much data as possible. A more comprehensive data collection strategy should be recommended for future studies.
+### 5. Key Insights
 
-3. **Exploring Outliers**: Analyzing the outliers further is essential; they might reveal unique cases worth examining. For example, understanding why certain countries exhibit extreme perceptions of corruption relative to their GDP could inform policies aimed at governance reforms.
+- **Trends Over Time**: The dataset spans multiple years (19 unique years), suggesting that it could be useful for time-series analysis. For instance, trends in `Life Ladder` scores or `Log GDP per capita` might reveal insights into how well-being has evolved globally.
+  
+- **Country Comparison**: There are 165 unique countries; comparative analysis could highlight which countries score highest/lowest in different metrics, providing insights into global inequalities in well-being.
 
-4. **Focus on Non-Normal Distributions**: The non-normality in most measures suggests leveraging non-parametric methods for further statistical analyses. Transformations or alternative analysis paradigms (e.g., bootstrapping) should be considered to avoid biases caused by non-standard distributions.
+### 6. Recommended Visualizations
 
-5. **Time-Series Analysis**: Given the temporal coverage of the dataset, a time-series analysis could unveil trends in well-being over the years, allowing stakeholders to assess the impact of global events, such as economic recessions, on life satisfaction ratings.
+- **Box Plots**: To visualize the distribution and identify outliers across key metrics (Life Ladder, Social support, etc.).
+  
+- **Line Charts**: Display trends in `Life Ladder` and `Log GDP per capita` over years for specific countries.
+  
+- **Heatmaps**: Show correlations among variables to identify how they interact with each other.
+  
+- **Bar Charts**: Comparison of well-being metrics among countries.
 
-### Limitations for Further Investigation
+### 7. Final Recommendations
 
-- **Granularity of Data**: The dataset aggregates data at the country level, potentially obscuring regional disparities within countries. Further disaggregation, such as state or city-level data, could provide a more nuanced understanding.
+- Conduct further analysis with an emphasis on imputing missing values and addressing outliers sensitively.
+- Consider advanced analyses like regression models to understand relationships between GDP and happiness.
+- Engage in exploratory data analysis (EDA) using visual tools to derive more context about the data.
+- Based on findings, set up a separate analysis focusing on the top and bottom countries in each key metric to derive actionable insights.
 
-- **Temporal Coverage Limitation**: The dataset spans 19 years; understanding changes over longer periods may require historical data. Certain global events may not be adequately captured within this timeline, affecting trend analyses.
+### Example Visualizations (Pseudocode)
 
-- **Lack of Causal Analysis**: Correlational insights derived from the dataset do not imply causation. Experimental or quasi-experimental designs would be necessary to draw stronger conclusions about causal relationships among the variables.
+This isn't executable code but represents how one might visually analyze the data using Python's `matplotlib` and `seaborn` libraries.
 
-- **Cultural Variability**: Differences in cultural contexts across countries may influence how individuals perceive various metrics like life satisfaction and social support, making cross-country comparisons complex.
+```python
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-- **Potential Bias in Self-Reported Data**: The subjective nature of metrics such as the "Life Ladder" could be influenced by national cultural tendencies towards optimism or pessimism, which might skew results and comparisons.
+# Load data
+data = pd.read_csv('dataset.csv')
 
-In sum, the dataset presents ample opportunities for critical analysis of the interplay between socio-economic factors and life satisfaction, albeit with inherent limitations that necessitate careful consideration in future investigations.
+# Box plot for Life Ladder
+sns.boxplot(x='Life Ladder', data=data)
+plt.title('Box Plot of Life Ladder Scores')
+plt.show()
+
+# Line plot for GDP Over Time
+for country in data['Country name'].unique()[:5]:  # Display for first 5 countries
+    country_data = data[data['Country name'] == country]
+    plt.plot(country_data['year'], country_data['Log GDP per capita'], label=country)
+
+plt.title('Log GDP per Capita Over Years')
+plt.xlabel('Year')
+plt.ylabel('Log GDP per Capita')
+plt.legend()
+plt.show()
+
+# Correlation heatmap
+correlation = data.corr()
+sns.heatmap(correlation, annot=True, cmap='coolwarm')
+plt.title('Correlation Heatmap')
+plt.show()
+```
+
+### Conclusion
+
+Through a well-structured approach to analyzing the data,
 
 ## Visualizations
 

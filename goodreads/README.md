@@ -2,51 +2,111 @@
 
 ## Analysis Narrative
 
-### 1. Dataset Overview
-The dataset comprises 10,000 rows and 23 columns, encompassing various attributes related to books, including identifiers, ratings, authors, publication years, and language codes. Each entry corresponds to distinct books with comprehensive metrics on their performance as reflected by user ratings on Goodreads.
+## Comprehensive Analysis of the Dataset
 
-### 2. Key Characteristics
+### Overview
 
-#### A. Column Structure
-- **Identifiers**: The dataset includes multiple IDs such as `book_id`, `goodreads_book_id`, `best_book_id`, and `work_id`, with no missing values, ensuring all entries are uniquely identifiable.
-- **Publication and Title Information**: Attributes such as `original_publication_year`, `original_title`, and `title` provide additional context about each book. Notably, the `original_publication_year` has 21 missing values, indicating some books may lack publication data.
-- **Authors and Language**: The dataset can account for multiple authors and languages, contributing to the background and diversity of selections. The `language_code` has around 10.84% missing values.
-- **Rating Metrics**: Detailed rating categories are captured (1 to 5 stars) alongside overall ratings such as `average_rating`, `ratings_count`, and `work_ratings_count`, providing a multi-faceted view of user reception.
-  
-#### B. Missing Values
-The analysis highlights certain columns with missing data:
-- `isbn` (7.0%), `isbn13` (5.85%), `original_title` (5.85%), and `language_code` (10.84%) represent the most significant proportions, suggesting potential gaps in standardization or data entry processes.
+The dataset contains information on 10,000 books with 23 attributes. Key attributes include book identifiers, ratings, publication information, and author details. This comprehensive analysis will explore the structure, missing values, outliers, and statistical characteristics of the dataset, along with visualizations for clarity.
 
-#### C. Unique Values
-- There are 10,000 unique entries for each of the IDs, but some attributes exhibit fewer unique entries (e.g., `books_count` has 597 unique values), indicating that many books may share attributes like primary authors or publication years.
+### 1. Dataset Structure
 
-### 3. Insights and Recommendations
+#### Basic Summary:
+- **Total Rows:** 10,000
+- **Total Columns:** 23
 
-#### A. Rating Distribution
-- The dataset reveals a skewed distribution in ratings, with the majority of books receiving high ratings (ratings of 4 and 5 stars are predominant). This skewness may suggest user bias towards positively reviewing books, potentially sidelining less popular or critically acclaimed works.
+#### Column Types:
+- **Integer:** `book_id`, `goodreads_book_id`, `best_book_id`, `work_id`, `books_count`, `ratings_count`, `work_ratings_count`, `work_text_reviews_count`, and various rating counts (`ratings_1`, `ratings_2`, etc.).
+- **Float:** `isbn13`, `original_publication_year`, `average_rating`.
+- **Object:** `isbn`, `authors`, `original_title`, `title`, `language_code`, `image_url`, `small_image_url`.
 
-#### B. Diversity of Authors and Styles
-- With 4,664 unique authors, the dataset reflects a broad range of literary styles and voices, supporting reader diversity. This information can inform curate reading lists or promotional campaigns for underrepresented authors.
+### 2. Missing Values Analysis
 
-#### C. Recommendations for Analysis
-- A deeper exploration of publication years alongside average ratings could reveal trends regarding the performance and popularity of contemporary versus classic literature.
-- Segmenting data based on language could yield insights into audience preferences across different linguistic demographics.
+- **Key Missing Values:**
+  - `isbn`: 700 (7.0%)
+  - `isbn13`: 585 (5.85%)
+  - `original_publication_year`: 21 (0.21%)
+  - `original_title`: 585 (5.85%)
+  - `language_code`: 1084 (10.84%)
 
-### 4. Limitations for Further Investigation
+#### Recommendations:
+- Consider imputing missing values where applicable, particularly for fields critical for analysis, such as `original_publication_year` and `language_code`.
+- Review the impact of missing `isbn` and `isbn13` values on book identification and classification.
 
-#### A. Data Completeness
-- The presence of missing values across significant attributes like `original_title` and `language_code` might affect the integrity of analyses. It is crucial to understand how these gaps could influence conclusions drawn from user ratings and trends.
+### 3. Unique Values Analysis
 
-#### B. Outlier Analysis
-- Many columns, particularly ratings and publication years, show a significant number of outliers, indicating potential data entry issues or the need for normalization. Further investigation of these outliers will be necessary to assess their influence on the overall dataset integrity.
+The dataset offers a good degree of diversity with regard to unique values:
+- **Unique Authors:** 4664
+- **Unique Languages:** 25
+- **Unique Titles:** 9964
 
-#### C. Normality of Distributions
-- Statistical tests indicate that most attributes, including key ratings metrics, do not follow a normal distribution, suggesting that traditional statistical models relying on normality might not be appropriate for analyses involving these datasets.
+This indicates a diverse collection of books to analyze, enhancing the potential for insights around author popularity, genre diversity, and language distribution.
 
-#### D. Temporal Aspects
-- The dataset does not include temporal dimensions (e.g., when ratings were given), limiting insights into how popularity and ratings might change over time and potentially missing trends in user behavior.
+### 4. Outliers Detection
 
-In summary, while the dataset provides a rich tapestry of information about books and their reception, careful attention to data quality, distribution, and temporal factors will be essential for yielding actionable insights and recommendations for authors, readers, and publishers alike.
+Outliers have been detected for various attributes, notably:
+- `goodreads_book_id`: 345 outliers
+- `average_rating`: 158 outliers
+- `ratings_count`: 1163 outliers
+
+#### Recommendations:
+- Review these outliers to determine if they are data-entry errors, legitimate extremes, or require capping to ensure robustness in analysis.
+- Visualizations such as box plots could be used to identify outlier patterns visually.
+
+### 5. Statistical Tests
+
+Most columns exhibit non-normal distributions as demonstrated by normality tests with p-values far below common significance levels (α = 0.05). Some key findings include:
+- **p-value for `average_rating`:** \(3.20 × 10^{-30}\)
+- **Ratings Counts:** All show non-normality.
+
+### 6. Visualizations
+
+Visualizations can assist in understanding distributions, relationships, and overall dataset composition. Below are suggested visualizations:
+
+#### a. Missing Values Heatmap
+A heatmap showing missing values helps easily identify affected columns.
+
+```python
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Assuming 'missing_values' is a DataFrame created from the relevant data
+missing_percentages = [0.0, 7.0, 5.85, 0.0, 0.21, 5.85, 10.84]  # Add other missing percentages here
+columns = ['book_id', 'isbn', 'isbn13', 'original_publication_year', 'original_title', 'language_code']
+sns.heatmap(pd.DataFrame(missing_percentages, columns=columns).T, cmap='Blues', annot=True)
+
+plt.title('Missing Values Heatmap')
+plt.ylabel('Columns')
+plt.xlabel('Missing Percentage')
+plt.show()
+```
+
+#### b. Distribution of Ratings
+A histogram or kernel density plot of the `average_rating` can reveal its distribution.
+
+```python
+plt.figure(figsize=(10, 5))
+sns.histplot(data=df, x='average_rating', bins=30, kde=True)
+plt.title('Distribution of Average Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.show()
+```
+
+#### c. Outlier Boxplots
+Box plots for `ratings_count` to visualize the distributions and outliers.
+
+```python
+plt.figure(figsize=(8, 5))
+sns.boxplot(data=df, y='ratings_count')
+plt.title('Boxplot of Ratings Count')
+plt.ylabel('Ratings Count')
+plt.show()
+```
+
+### 7. Conclusion and Recommendations
+
+1. **Data Quality**: Focus on handling missing values and outlier detection before conducting further analysis.
+2. **Exploratory Data Analysis (EDA)**: Conduct EDA to understand underlying trends and patterns—this can be targeted towards author popularity, language distribution, or average ratings
 
 ## Visualizations
 
